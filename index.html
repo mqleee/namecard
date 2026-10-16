@@ -322,4 +322,190 @@
 
             <div class="mt-5 flex gap-2.5">
                 <button onclick="downloadQRImage()" class="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 2
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download QR (.PNG)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-full shadow-lg text-xs font-semibold flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 translate-y-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+
+    <script>
+        const profile = {
+            firstName: 'Min Qi',
+            lastName: '',
+            fullName: 'Min Qi',
+            company: 'Lian Thye & Co Pte Ltd',
+            phone: '+65 6285 2677',
+            phoneClean: '+6562852677',
+            email: 'minqi.lee@lianthye.com.sg',
+            addressStreet: '33 Mactaggart Road',
+            addressCity: 'Singapore',
+            addressPostal: '368082',
+            addressCountry: 'Singapore',
+            industryNote: 'Toy distribution in Singapore & Malaysia'
+        };
+
+        let currentQRMode = 'vcard';
+        let qrInstance = null;
+
+        window.onload = function () {
+            renderQRCode();
+        };
+
+        // vCard 3.0 string with First Name: Min Qi and No Surname
+        function generateVCardString() {
+            const lines = [
+                'BEGIN:VCARD',
+                'VERSION:3.0',
+                `N:;${profile.firstName};;;`,
+                `FN:${profile.fullName}`,
+                `ORG:${profile.company}`,
+                `TEL;TYPE=WORK,VOICE:${profile.phoneClean}`,
+                `EMAIL;TYPE=WORK,INTERNET:${profile.email}`,
+                `ADR;TYPE=WORK:;;${profile.addressStreet};${profile.addressCity};;${profile.addressPostal};${profile.addressCountry}`,
+                `NOTE:${profile.industryNote}`,
+                'END:VCARD'
+            ];
+            return lines.join('\r\n');
+        }
+
+        function downloadVCard() {
+            const vcardData = generateVCardString();
+            const blob = new Blob([vcardData], { type: 'text/vcard;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'Min_Qi_Lian_Thye.vcf');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Downloading contact card (.vcf)...');
+        }
+
+        function renderQRCode() {
+            const canvas = document.getElementById('qrCanvas');
+            const qrValue = currentQRMode === 'vcard'
+                ? generateVCardString()
+                : (window.location.href.startsWith('http') ? window.location.href : 'https://lianthye.com.sg/min-qi');
+
+            qrInstance = new QRious({
+                element: canvas,
+                value: qrValue,
+                size: 260,
+                level: 'M',
+                background: '#FFFFFF',
+                foreground: '#1E293B',
+                padding: 8
+            });
+        }
+
+        function switchQRMode(mode) {
+            currentQRMode = mode;
+            const tabVcard = document.getElementById('tabVcard');
+            const tabUrl = document.getElementById('tabUrl');
+            const desc = document.getElementById('qrModeDescription');
+
+            if (mode === 'vcard') {
+                tabVcard.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-sm';
+                tabUrl.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-800';
+                desc.innerHTML = "Scans directly into the phone's native <strong>Add to Contacts</strong> screen.";
+            } else {
+                tabUrl.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all bg-white text-slate-800 shadow-sm';
+                tabVcard.className = 'py-2 px-3 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-800';
+                desc.innerHTML = 'Points to your hosted digital card web link.';
+            }
+
+            renderQRCode();
+        }
+
+        function downloadQRImage() {
+            const canvas = document.getElementById('qrCanvas');
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = currentQRMode === 'vcard' 
+                ? 'Min_Qi_Contact_QR.png' 
+                : 'Min_Qi_Web_QR.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('QR Code downloaded!');
+        }
+
+        function openQRModal() {
+            renderQRCode();
+            const modal = document.getElementById('qrModal');
+            const card = document.getElementById('qrModalCard');
+            modal.classList.remove('opacity-0', 'invisible');
+            card.classList.remove('scale-95', 'opacity-0');
+            card.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeQRModal() {
+            const modal = document.getElementById('qrModal');
+            const card = document.getElementById('qrModalCard');
+            modal.classList.add('opacity-0', 'invisible');
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+        }
+
+        function handleBackdropClick(e) {
+            if (e.target.id === 'qrModal') {
+                closeQRModal();
+            }
+        }
+
+        function copyTextToClipboard(text, label) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(label || 'Copied to clipboard!');
+            } catch (err) {
+                showToast('Unable to copy');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function copyAllDetails() {
+            const summary = [
+                profile.fullName,
+                profile.company,
+                `Tel: ${profile.phone}`,
+                `Email: ${profile.email}`,
+                `Address: ${profile.addressStreet}, ${profile.addressCity} ${profile.addressPostal}`
+            ].join('\n');
+
+            copyTextToClipboard(summary, 'All contact details copied!');
+        }
+
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toastMessage');
+            msgEl.textContent = message;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+            }, 2600);
+        }
+    </script>
+</body>
+</html>
